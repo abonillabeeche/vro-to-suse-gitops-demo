@@ -1,0 +1,37 @@
+{# Per-OS names and pillar overrides. Only the Suse family (SLES/Leap 16.x) is tested in this demo. #}
+{% set os_map = salt['grains.filter_by']({
+    'Suse': {
+        'pkgs': ['apache2', 'apache2-mod_php8', 'php8', 'php8-mysql', 'php8-gd', 'php8-mbstring', 'php8-zip',
+                 'php8-curl', 'php8-xmlreader', 'php8-intl', 'php8-openssl', 'php8-fileinfo', 'php8-exif',
+                 'mariadb', 'mariadb-client', 'curl', 'openssl'],
+        'web_service': 'apache2',
+        'db_service': 'mariadb',
+        'web_user': 'wwwrun',
+        'vhost_dir': '/etc/apache2/vhosts.d',
+        'docroot': '/srv/www/wordpress',
+        'php_module': 'php8',
+    },
+    'Debian': {
+        'pkgs': ['apache2', 'libapache2-mod-php', 'php-mysql', 'php-gd', 'php-mbstring', 'php-zip', 'php-curl',
+                 'php-xml', 'php-intl', 'mariadb-server', 'mariadb-client', 'curl', 'openssl'],
+        'web_service': 'apache2', 'db_service': 'mariadb', 'web_user': 'www-data',
+        'vhost_dir': '/etc/apache2/sites-enabled', 'docroot': '/var/www/wordpress', 'php_module': '',
+    },
+    'RedHat': {
+        'pkgs': ['httpd', 'php', 'php-mysqlnd', 'php-gd', 'php-mbstring', 'php-zip', 'php-xml', 'php-intl',
+                 'mariadb-server', 'mariadb', 'curl', 'openssl'],
+        'web_service': 'httpd', 'db_service': 'mariadb', 'web_user': 'apache',
+        'vhost_dir': '/etc/httpd/conf.d', 'docroot': '/var/www/wordpress', 'php_module': '',
+    },
+}, grain='os_family') %}
+
+{# Pillar wins; the url can also come from a grain set at provisioning time (cloud-init). #}
+{% set wp = salt['pillar.get']('wordpress', {}, merge=True) %}
+{% set wp = {
+    'db_name': wp.get('db_name', 'wordpress'),
+    'db_user': wp.get('db_user', 'wordpress'),
+    'site_title': wp.get('site_title', 'Deployed by Salt'),
+    'admin_user': wp.get('admin_user', 'wpadmin'),
+    'admin_email': wp.get('admin_email', 'admin@example.com'),
+    'url': wp.get('url', salt['grains.get']('wordpress:url', 'http://' ~ grains['fqdn'])),
+} %}

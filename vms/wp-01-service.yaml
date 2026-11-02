@@ -1,0 +1,15 @@
+# Exposes WordPress on wp-01 (pod network) at http://<node-ip>:30880 without putting the VM on a LAN VLAN.
+apiVersion: v1
+kind: Service
+metadata:
+  name: wp-01-http
+  namespace: vm-demo
+spec:
+  type: NodePort
+  selector:
+    harvesterhci.io/vmName: wp-01
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      nodePort: 30880

@@ -67,3 +67,19 @@ suma/                SUSE Multi-Linux Manager activation/bootstrap notes + Salt 
 - Fleet ignores fields that Harvester mutates after apply (`vms/fleet.yaml` `comparePatches`), so the bundle stays green.
 - In a public repo, GitHub holds the validate run on the first PR opened by `github-actions[bot]` until a maintainer clicks *Approve and run* (first-time contributor rule). After that PR is merged, later requests run automatically. To avoid it entirely, open the PR with a GitHub App token instead of `GITHUB_TOKEN`.
 - Each VM pins its `macAddress`. Harvester assigns a random MAC at creation; without pinning, every Fleet re-apply drops it, flags all VMs "restart required", and a restart would change the MAC (breaking DHCP reservations).
+
+## Part 2: inside the VM (Salt + SUSE Multi-Linux Manager)
+
+The same Salt states an Aria cloud template applies through its `Cloud.SaltStack` resource
+(`aria/wordpress-cloud-template.yaml`) run unchanged from SUSE Multi-Linux Manager:
+
+1. `salt/wordpress/` is plain Salt (Apache + PHP + MariaDB from the server's SLES 16.1 channel, WordPress itself
+   from wordpress.org via WP-CLI). Secrets are generated on the VM, never stored in Git.
+2. `suma/wordpress.py setup` publishes it as the `wordpress` state channel and creates activation key
+   `1-wordpress` (SLES 16.1 base + tools channels, state channel, configuration deployment).
+3. Fleet creates `vms/wp-01.yaml`; its cloud-init (`vms/wordpress-cloudinit.secret.yaml`) installs the Salt
+   minion, points it at the server with that activation key, and hands the repos over to the server.
+4. `suma/wordpress.py accept wp-01` accepts the minion key; registration applies the channels and the state.
+5. WordPress answers at `http://<node-ip>:30880` (`vms/wp-01-service.yaml`).
+
+Test the states without a server: `salt-call --local --file-root=salt state.apply wordpress test=True`.
