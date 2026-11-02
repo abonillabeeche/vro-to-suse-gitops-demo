@@ -84,4 +84,10 @@ The same Salt states an Aria cloud template applies through its `Cloud.SaltStack
 4. `suma/wordpress.py accept wp-01` accepts the minion key; registration applies the channels and the state.
 5. WordPress answers at `http://<node-ip>:30880` (`vms/wp-01-service.yaml`).
 
+Day 2 (lifecycle): change the state in Git (for example the site title in `salt/wordpress/map.jinja`), run
+`suma/wordpress.py setup` to publish the new revision to the state channel, then apply a highstate from the server
+(UI: System > States > Highstate > Apply Highstate, or `suma/wordpress.py highstate wp-01`). Only the states whose
+target differs change. The same highstate also reverts manual edits on the VM (drift), so a recurring highstate
+keeps the fleet converged.
+
 Test the states without a server: `salt-call --local --file-root=salt state.apply wordpress test=True`.
