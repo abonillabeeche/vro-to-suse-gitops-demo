@@ -23,11 +23,11 @@ spec:
           sockets: 1
           threads: 1
         memory:
-          guest: 2Gi
+          guest: 128Gi
         resources:
           limits:
             cpu: "1"
-            memory: 2Gi
+            memory: 128Gi
         devices:
           disks:
             - name: rootdisk
