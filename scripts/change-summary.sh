@@ -5,7 +5,8 @@ set -euo pipefail
 
 base=$1
 head=${2:-HEAD}
-q='[.spec.template.spec.domain.cpu.cores, .spec.template.spec.domain.memory.guest] | join(" / ")'
+# vCPUs = cores x sockets x threads (works for both the old cores-based and the hot-plug sockets-based shape)
+q='[(.spec.template.spec.domain.cpu | (.cores // 1) * (.sockets // 1) * (.threads // 1)), .spec.template.spec.domain.memory.guest] | join(" / ")'
 
 echo "### VM change plan"
 echo
@@ -18,4 +19,4 @@ for f in $(git diff --name-only "$base" "$head" -- 'vms/*.yaml'); do
   echo "| $(basename "$f" .yaml) | ${before:-_new_} | ${after:-_deleted_} |"
 done
 echo
-echo "After merge, Fleet applies the change to Harvester. Memory/CPU changes need a VM restart unless hot-plug is enabled for that VM."
+echo "After merge, Fleet applies the change to Harvester. CPU and memory *increases* are hot-plugged into the running VM (no reboot, up to 4x the boot size). Decreases, or growth past that, restart the VM automatically (auto-restart label)."

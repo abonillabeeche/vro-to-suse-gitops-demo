@@ -1,0 +1,74 @@
+# Restarts VMs that opted in (label demo.example.com/auto-restart=true) when Harvester reports a change
+# that could not be applied live (RestartRequired), e.g. a memory decrease or growth past the hot-plug maximum.
+# Changes are merged inside the maintenance window (scheduled-merge workflow), so restarts happen there too.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vm-auto-restart
+  namespace: vm-demo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: vm-auto-restart
+  namespace: vm-demo
+rules:
+  - apiGroups: ["kubevirt.io"]
+    resources: ["virtualmachines"]
+    verbs: ["get", "list"]
+  - apiGroups: ["subresources.kubevirt.io"]
+    resources: ["virtualmachines/restart"]
+    verbs: ["update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vm-auto-restart
+  namespace: vm-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: vm-auto-restart
+subjects:
+  - kind: ServiceAccount
+    name: vm-auto-restart
+    namespace: vm-demo
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: vm-auto-restart
+  namespace: vm-demo
+spec:
+  schedule: "*/2 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      ttlSecondsAfterFinished: 3600
+      template:
+        spec:
+          serviceAccountName: vm-auto-restart
+          restartPolicy: Never
+          containers:
+            - name: restart
+              image: docker.io/rancher/kuberlr-kubectl:v8.1.1
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  for vm in $(kubectl -n vm-demo get vm -l demo.example.com/auto-restart=true -o name); do
+                    name=${vm#*/}
+                    rr=$(kubectl -n vm-demo get vm "$name" -o jsonpath='{.status.conditions[?(@.type=="RestartRequired")].status}')
+                    if [ "$rr" = "True" ]; then
+                      echo "restarting $name: change needs a restart"
+                      echo '{}' | kubectl replace --raw "/apis/subresources.kubevirt.io/v1/namespaces/vm-demo/virtualmachines/$name/restart" -f -
+                    fi
+                  done
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi

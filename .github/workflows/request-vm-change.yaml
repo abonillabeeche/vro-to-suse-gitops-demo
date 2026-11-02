@@ -1,5 +1,6 @@
 # Self-service "catalog request": fill in the form (Actions tab > Request VM change > Run workflow)
 # and it opens a pull request. Approval = PR review (CODEOWNERS); deployment = Fleet after merge.
+# With "Apply at" set, the scheduled-merge workflow merges the approved PR at that time (maintenance window).
 name: Request VM change
 
 on:
@@ -10,7 +11,7 @@ on:
         type: choice
         options: [web-01, app-01, db-01]
       cpu:
-        description: vCPU cores
+        description: vCPUs
         type: choice
         options: ["1", "2", "4", "8", "16"]
         default: "2"
@@ -23,6 +24,10 @@ on:
         description: Business justification / ticket number
         type: string
         required: true
+      apply_at:
+        description: "Apply at (UTC, e.g. 2026-11-03T02:00Z). Empty = merge manually after approval"
+        type: string
+        required: false
 
 permissions:
   contents: write
@@ -36,6 +41,7 @@ jobs:
       CPU: ${{ inputs.cpu }}
       MEMORY: ${{ inputs.memory }}
       REASON: ${{ inputs.reason }}
+      APPLY_AT: ${{ inputs.apply_at }}
       REQUESTER: ${{ github.actor }}
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -44,11 +50,13 @@ jobs:
       - name: Update VM spec
         run: |
           yq -i '
-            .spec.template.spec.domain.cpu.cores = (strenv(CPU) | tonumber) |
-            .spec.template.spec.domain.resources.limits.cpu = strenv(CPU) |
-            .spec.template.spec.domain.memory.guest = strenv(MEMORY) |
-            .spec.template.spec.domain.resources.limits.memory = strenv(MEMORY)
+            .spec.template.spec.domain.cpu.sockets = (strenv(CPU) | tonumber) |
+            .spec.template.spec.domain.memory.guest = strenv(MEMORY)
           ' "vms/${VM}.yaml"
+          if [ -n "$APPLY_AT" ]; then
+            due=$(date -u -d "$APPLY_AT" +%s) || { echo "::error::Apply at '$APPLY_AT' is not a valid time"; exit 1; }
+            [ "$due" -gt "$(date -u +%s)" ] || { echo "::error::Apply at '$APPLY_AT' is in the past"; exit 1; }
+          fi
           git diff --exit-code --quiet && { echo "::error::No change: ${VM} is already ${CPU} vCPU / ${MEMORY}"; exit 1; }
           scripts/validate.sh
 
@@ -60,6 +68,15 @@ jobs:
           git switch -c "$branch"
           git commit -am "${VM}: resize to ${CPU} vCPU / ${MEMORY}"
           git push origin "$branch"
-          gh pr create --base main --head "$branch" \
+          if [ -n "$APPLY_AT" ]; then
+            when="Apply at: $(date -u -d "$APPLY_AT" +%FT%H:%MZ)"
+            next="Once approved, the scheduled-merge workflow merges it at that time and Fleet applies it."
+            label=(--label scheduled)
+          else
+            when="Apply at: on merge"
+            next="Merging this PR applies the change via Fleet."
+            label=()
+          fi
+          gh pr create --base main --head "$branch" "${label[@]}" \
             --title "${VM}: resize to ${CPU} vCPU / ${MEMORY}" \
-            --body "$(printf 'Requested by: %s\n\nReason: %s\n\nMerging this PR applies the change via Fleet.' "$REQUESTER" "$REASON")"
+            --body "$(printf 'Requested by: %s\n\nReason: %s\n\n%s\n\n%s' "$REQUESTER" "$REASON" "$when" "$next")"

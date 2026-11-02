@@ -24,10 +24,10 @@ for f in vms/*.yaml; do
   before=$errors
   name=$(yq '.metadata.name' "$f")
   ns=$(yq '.metadata.namespace' "$f")
+  sockets=$(yq '.spec.template.spec.domain.cpu.sockets' "$f")
   cores=$(yq '.spec.template.spec.domain.cpu.cores' "$f")
-  cpu_limit=$(yq '.spec.template.spec.domain.resources.limits.cpu' "$f")
   guest=$(yq '.spec.template.spec.domain.memory.guest' "$f")
-  mem_limit=$(yq '.spec.template.spec.domain.resources.limits.memory' "$f")
+  hotplug=$(yq '.metadata.annotations."harvesterhci.io/enableCPUAndMemoryHotplug"' "$f")
 
   [ "$(basename "$f" .yaml)" = "$name" ] || fail "$f" "file name must match metadata.name ($name)"
   yq -e ".allowedNamespaces | contains([\"$ns\"])" "$POLICY" >/dev/null || fail "$f" "namespace $ns is not allowed"
@@ -36,14 +36,17 @@ for f in vms/*.yaml; do
     yq -e ".metadata.labels.\"$label\"" "$f" >/dev/null 2>&1 || fail "$f" "missing required label $label"
   done
 
-  # CPU/memory must be within policy, and the guest size must match the limits (catches half-edited files)
-  (( cores >= cpu_min && cores <= cpu_max )) || fail "$f" "cpu.cores=$cores outside ${cpu_min}-${cpu_max}"
-  [ "$cpu_limit" = "$cores" ] || fail "$f" "limits.cpu ($cpu_limit) must equal cpu.cores ($cores)"
+  # Hot-plug shape: vCPUs are sockets (1 core each), memory is memory.guest, no explicit limits
+  [ "$hotplug" = "true" ] || fail "$f" "annotation harvesterhci.io/enableCPUAndMemoryHotplug must be \"true\""
+  [ "$cores" = "1" ] || fail "$f" "cpu.cores must be 1 (vCPUs are hot-plugged as sockets)"
+  yq -e '.spec.template.spec.domain.resources.limits' "$f" >/dev/null 2>&1 && fail "$f" "remove resources.limits (blocks live memory hot-plug)"
+
+  # CPU/memory must be within policy
+  (( sockets >= cpu_min && sockets <= cpu_max )) || fail "$f" "vCPUs (cpu.sockets)=$sockets outside ${cpu_min}-${cpu_max}"
   gi=$(to_gi "$guest")
   awk "BEGIN{exit !($gi >= $mem_min && $gi <= $mem_max)}" || fail "$f" "memory $guest outside ${mem_min}-${mem_max}Gi"
-  [ "$mem_limit" = "$guest" ] || fail "$f" "limits.memory ($mem_limit) must equal memory.guest ($guest)"
 
-  if [ "$errors" -eq "$before" ]; then echo "ok  $name  cpu=$cores mem=$guest"; fi
+  if [ "$errors" -eq "$before" ]; then echo "ok  $name  cpu=$sockets mem=$guest"; fi
 done
 
 [ "$errors" -eq 0 ] || { echo "$errors policy violation(s)"; exit 1; }

@@ -7,7 +7,11 @@ metadata:
     demo.example.com/tier: app
     demo.example.com/owner: team-app
     demo.example.com/cost-center: "cc-1001"
+    # opt in: vms/auto-restart.yaml restarts this VM when a change cannot be applied live
+    demo.example.com/auto-restart: "true"
   annotations:
+    # CPU (sockets) and memory increases are hot-plugged into the running VM, no reboot (up to 4x the boot size)
+    harvesterhci.io/enableCPUAndMemoryHotplug: "true"
     # Harvester creates the root disk from a VM image (here: openSUSE Leap 16.0; adjust image + storage class to your cluster)
     harvesterhci.io/volumeClaimTemplates: '[{"metadata":{"name":"app-01-rootdisk","annotations":{"harvesterhci.io/imageId":"default/image-s4khv"}},"spec":{"accessModes":["ReadWriteMany"],"resources":{"requests":{"storage":"10Gi"}},"volumeMode":"Block","storageClassName":"longhorn-v2"}}]'
 spec:
@@ -19,15 +23,11 @@ spec:
     spec:
       domain:
         cpu:
-          cores: 2
-          sockets: 1
+          cores: 1
+          sockets: 2
           threads: 1
         memory:
           guest: 2Gi
-        resources:
-          limits:
-            cpu: "2"
-            memory: 2Gi
         devices:
           disks:
             - name: rootdisk

@@ -22,7 +22,9 @@ flowchart LR
 - **Request:** `.github/workflows/request-vm-change.yaml` is a form (Actions tab > Run workflow). It edits `vms/<vm>.yaml` and opens a PR.
 - **Validate:** `.github/workflows/validate.yaml` checks the schema, enforces `policy/limits.yaml`, and comments a before/after plan on the PR.
 - **Approve:** `.github/CODEOWNERS` routes the review (in a real org: DB VMs to the DBA team, policy changes to platform admins).
+- **Schedule (optional):** set *Apply at* on the form and `.github/workflows/scheduled-merge.yaml` merges the approved PR at that time, so the change lands in the maintenance window.
 - **Apply:** Fleet (`fleet/gitrepo.yaml`) watches `main` and applies `vms/` to the Harvester cluster. Nobody runs kubectl by hand.
+- **No reboot:** VMs have Harvester CPU/memory hot-plug enabled, so increases go live in the running guest. Changes that cannot be applied live (decreases, growth past 4x the boot size) are restarted by `vms/auto-restart.yaml` for VMs labelled `demo.example.com/auto-restart=true`.
 - **Inside the guest:** SUSE Multi-Linux Manager registers the VM and manages repos, patches and Salt states. See [suma/](suma/).
 
 Engineers can skip the form and edit the YAML in a PR directly. The same checks and approvals apply.
@@ -58,7 +60,9 @@ suma/                SUSE Multi-Linux Manager activation/bootstrap notes + Salt 
 
 ## Notes
 
-- CPU/memory changes take effect after a VM restart, unless the VM has CPU/memory hot-plug configured in Harvester.
+- Hot-plug shape: annotation `harvesterhci.io/enableCPUAndMemoryHotplug: "true"`, vCPUs as `cpu.sockets` (1 core each), memory as `memory.guest`, and **no** `resources.limits` (limits block live memory changes). Requires KubeVirt `vmRolloutStrategy: LiveUpdate` (Harvester's default). The ceiling is the `max-hotplug-ratio` setting (default 4x the size the VM booted with). `scripts/validate.sh` enforces this shape.
+- Switching an existing VM to the hot-plug shape is itself a restart-required change (CPU topology); auto-restart handles it once.
+- Scheduled runs on GitHub can start several minutes late, and scheduled workflows in public repos pause after 60 days without commits.
 - Fleet ignores fields that Harvester mutates after apply (`vms/fleet.yaml` `comparePatches`), so the bundle stays green.
 - In a public repo, GitHub holds the validate run on the first PR opened by `github-actions[bot]` until a maintainer clicks *Approve and run* (first-time contributor rule). After that PR is merged, later requests run automatically. To avoid it entirely, open the PR with a GitHub App token instead of `GITHUB_TOKEN`.
 - Each VM pins its `macAddress`. Harvester assigns a random MAC at creation; without pinning, every Fleet re-apply drops it, flags all VMs "restart required", and a restart would change the MAC (breaking DHCP reservations).
