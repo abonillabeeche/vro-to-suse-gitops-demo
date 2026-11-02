@@ -19,15 +19,15 @@ spec:
     spec:
       domain:
         cpu:
-          cores: 2
+          cores: 4
           sockets: 1
           threads: 1
         memory:
-          guest: 5Gi
+          guest: 8Gi
         resources:
           limits:
-            cpu: "2"
-            memory: 5Gi
+            cpu: "4"
+            memory: 8Gi
         devices:
           disks:
             - name: rootdisk
