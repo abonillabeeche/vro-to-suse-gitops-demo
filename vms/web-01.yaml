@@ -24,11 +24,11 @@ spec:
       domain:
         cpu:
           cores: 1
-          sockets: 1
+          sockets: 2
           threads: 1
           maxSockets: 8
         memory:
-          guest: 2Gi
+          guest: 4Gi
         devices:
           disks:
             - name: rootdisk
