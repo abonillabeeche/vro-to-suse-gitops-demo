@@ -77,8 +77,10 @@ The same Salt states an Aria cloud template applies through its `Cloud.SaltStack
    from wordpress.org via WP-CLI). Secrets are generated on the VM, never stored in Git.
 2. `suma/wordpress.py setup` publishes it as the `wordpress` state channel and creates activation key
    `1-wordpress` (SLES 16.1 base + tools channels, state channel, configuration deployment).
-3. Fleet creates `vms/wp-01.yaml`; its cloud-init (`vms/wordpress-cloudinit.secret.yaml`) installs the Salt
-   minion, points it at the server with that activation key, and hands the repos over to the server.
+3. On the server, `mgr-bootstrap --activation-keys=1-wordpress --script=bootstrap-wordpress.sh` publishes a
+   bootstrap script for that key. Fleet creates `vms/wp-01.yaml`; SUSE Virtualization passes its cloud-config
+   (`vms/wordpress-cloudinit.secret.yaml`) to the VM, which sets the app grains, hands the repos over to the
+   server and runs `curl -Sks https://<server>/pub/bootstrap/bootstrap-wordpress.sh | /bin/bash`.
 4. `suma/wordpress.py accept wp-01` accepts the minion key; registration applies the channels and the state.
 5. WordPress answers at `http://<node-ip>:30880` (`vms/wp-01-service.yaml`).
 
