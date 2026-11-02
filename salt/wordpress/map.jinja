@@ -2,7 +2,8 @@
 {% set os_map = salt['grains.filter_by']({
     'Suse': {
         'pkgs': ['apache2', 'apache2-mod_php8', 'php8', 'php8-cli', 'php8-mysql', 'php8-gd', 'php8-mbstring', 'php8-zip',
-                 'php8-curl', 'php8-xmlreader', 'php8-intl', 'php8-openssl', 'php8-fileinfo', 'php8-exif',
+                 'php8-curl', 'php8-xmlreader', 'php8-xmlwriter', 'php8-intl', 'php8-openssl', 'php8-fileinfo',
+                 'php8-exif', 'php8-phar', 'php8-ctype', 'php8-dom', 'php8-iconv', 'php8-sodium', 'php8-tokenizer',
                  'mariadb', 'mariadb-client', 'curl', 'openssl'],
         'web_service': 'apache2',
         'db_service': 'mariadb',

@@ -3,7 +3,8 @@
 # from `salt-call --local`, or from a SUSE Multi-Linux Manager configuration (state) channel.
 # Secrets are generated on the VM at first run (never stored in Git or pillar) and reused afterwards.
 {% from tpldir ~ "/map.jinja" import os_map, wp with context %}
-{% set wpcli = "/usr/local/bin/wp --allow-root --path=" ~ os_map.docroot %}
+{# WP-CLI extracts the WordPress archive in memory; the 128M CLI default is not enough. #}
+{% set wpcli = "php -d memory_limit=512M /usr/local/bin/wp --allow-root --path=" ~ os_map.docroot %}
 
 wordpress-packages:
   pkg.installed:
