@@ -1,7 +1,7 @@
 {# Per-OS names and pillar overrides. Only the Suse family (SLES/Leap 16.x) is tested in this demo. #}
 {% set os_map = salt['grains.filter_by']({
     'Suse': {
-        'pkgs': ['apache2', 'apache2-mod_php8', 'php8', 'php8-mysql', 'php8-gd', 'php8-mbstring', 'php8-zip',
+        'pkgs': ['apache2', 'apache2-mod_php8', 'php8', 'php8-cli', 'php8-mysql', 'php8-gd', 'php8-mbstring', 'php8-zip',
                  'php8-curl', 'php8-xmlreader', 'php8-intl', 'php8-openssl', 'php8-fileinfo', 'php8-exif',
                  'mariadb', 'mariadb-client', 'curl', 'openssl'],
         'web_service': 'apache2',
@@ -12,13 +12,13 @@
         'php_module': 'php8',
     },
     'Debian': {
-        'pkgs': ['apache2', 'libapache2-mod-php', 'php-mysql', 'php-gd', 'php-mbstring', 'php-zip', 'php-curl',
+        'pkgs': ['apache2', 'libapache2-mod-php', 'php-cli', 'php-mysql', 'php-gd', 'php-mbstring', 'php-zip', 'php-curl',
                  'php-xml', 'php-intl', 'mariadb-server', 'mariadb-client', 'curl', 'openssl'],
         'web_service': 'apache2', 'db_service': 'mariadb', 'web_user': 'www-data',
         'vhost_dir': '/etc/apache2/sites-enabled', 'docroot': '/var/www/wordpress', 'php_module': '',
     },
     'RedHat': {
-        'pkgs': ['httpd', 'php', 'php-mysqlnd', 'php-gd', 'php-mbstring', 'php-zip', 'php-xml', 'php-intl',
+        'pkgs': ['httpd', 'php', 'php-cli', 'php-mysqlnd', 'php-gd', 'php-mbstring', 'php-zip', 'php-xml', 'php-intl',
                  'mariadb-server', 'mariadb', 'curl', 'openssl'],
         'web_service': 'httpd', 'db_service': 'mariadb', 'web_user': 'apache',
         'vhost_dir': '/etc/httpd/conf.d', 'docroot': '/var/www/wordpress', 'php_module': '',
