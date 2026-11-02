@@ -1,0 +1,39 @@
+# Merges approved change requests at their scheduled time ("Apply at:" line + "scheduled" label, set by the
+# request form). Merging is what applies the change: Fleet syncs main to Harvester within seconds.
+# The bot merges through the same branch rules as people: the PR must be approved and the validate check green.
+# Note: GitHub may start scheduled runs several minutes late; use "Run workflow" to check immediately.
+name: Scheduled merge
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge-due:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Merge approved PRs whose apply time has passed
+        run: |
+          now=$(date -u +%s)
+          gh pr list --label scheduled --state open --json number,body,reviewDecision,statusCheckRollup --jq '
+            .[] | [.number, .reviewDecision,
+                   ([.statusCheckRollup[].conclusion] | length > 0 and all(. == "SUCCESS")),
+                   ((.body | capture("Apply at: (?<t>[0-9TZ:+-]+)") | .t) // "")] | @tsv' |
+          while IFS=$'\t' read -r pr decision checks_ok at; do
+            if [ -z "$at" ]; then echo "#$pr: no 'Apply at:' line, skipping"; continue; fi
+            due=$(date -u -d "$at" +%s) || { echo "#$pr: bad time '$at'"; continue; }
+            if [ "$now" -lt "$due" ]; then echo "#$pr: scheduled for $at, not yet"; continue; fi
+            if [ "$decision" != "APPROVED" ]; then echo "#$pr: due but not approved ($decision), waiting"; continue; fi
+            if [ "$checks_ok" != "true" ]; then echo "#$pr: due but checks are not green, waiting"; continue; fi
+            echo "#$pr: due ($at) and approved, merging"
+            gh pr merge "$pr" --merge --delete-branch
+            gh pr comment "$pr" --body "Merged by the scheduled-merge workflow at $(date -u +%FT%TZ) (scheduled for $at). Fleet applies the change now."
+          done
