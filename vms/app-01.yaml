@@ -41,6 +41,7 @@ spec:
             - name: default
               masquerade: {}
               model: virtio
+              macAddress: 72:f1:e9:de:4c:f8
       networks:
         # pod network keeps the demo self-contained; use multus + a VM network (e.g. default/vlan1) in production
         - name: default
