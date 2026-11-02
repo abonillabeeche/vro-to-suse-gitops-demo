@@ -79,7 +79,7 @@ spec:
                         age=$(( now - $(date -u -d "$first" +%s) ))
                         if [ "$age" -ge 300 ]; then
                           reason="hot-plug could not be applied live for ${age}s (no migration target node)"
-                          echo "$migs" | cut -d' ' -f3 | xargs -r kubectl -n vm-demo delete vmim
+                          echo "$migs" | cut -d' ' -f3 | xargs -r kubectl -n vm-demo delete vmim --wait=false
                         fi
                       fi ;;
                     esac
