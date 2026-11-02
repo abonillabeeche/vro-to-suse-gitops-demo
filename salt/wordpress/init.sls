@@ -74,6 +74,18 @@ wordpress-install:
     - require:
       - cmd: wordpress-config
 
+# Day-2 settings: kept equal to the values above on every highstate (drift is corrected).
+wordpress-site-identity:
+  cmd.run:
+    - name: >-
+        {{ wpcli }} option update blogname "{{ wp.site_title }}" &&
+        {{ wpcli }} option update blogdescription "{{ wp.tagline }}"
+    - unless: >-
+        test "$({{ wpcli }} option get blogname)" = "{{ wp.site_title }}" &&
+        test "$({{ wpcli }} option get blogdescription)" = "{{ wp.tagline }}"
+    - require:
+      - cmd: wordpress-install
+
 wordpress-ownership:
   file.directory:
     - name: {{ os_map.docroot }}

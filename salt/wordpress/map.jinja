@@ -32,6 +32,7 @@
     'db_name': wp.get('db_name', 'wordpress'),
     'db_user': wp.get('db_user', 'wordpress'),
     'site_title': wp.get('site_title', 'Deployed by Salt'),
+    'tagline': wp.get('tagline', 'Same Salt state as the Aria blueprint'),
     'admin_user': wp.get('admin_user', 'wpadmin'),
     'admin_email': wp.get('admin_email', 'admin@example.com'),
     'url': wp.get('url', salt['grains.get']('wordpress:url', 'http://' ~ grains['fqdn'])),
