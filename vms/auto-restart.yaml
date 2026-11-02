@@ -64,23 +64,25 @@ spec:
               command: ["/bin/sh", "-c"]
               args:
                 - |
+                  now=$(date -u +%s)
                   for vm in $(kubectl -n vm-demo get vm -l demo.example.com/auto-restart=true -o name); do
                     name=${vm#*/}
-                    rr=$(kubectl -n vm-demo get vm "$name" -o jsonpath='{.status.conditions[?(@.type=="RestartRequired")].status}')
+                    conds=$(kubectl -n vm-demo get vm "$name" -o jsonpath='{range .status.conditions[*]}{.type}={.status}{" "}{end}')
                     reason=""
-                    if [ "$rr" = "True" ]; then reason="change needs a restart"; fi
-                    # hot-plug migrations that never started (no target node) for 5+ minutes
-                    for m in $(kubectl -n vm-demo get vmim -o jsonpath="{range .items[?(@.spec.vmiName==\"$name\")]}{.metadata.name}={.status.phase}={.metadata.creationTimestamp}{\"\\n\"}{end}"); do
-                      phase=$(echo "$m" | cut -d= -f2)
-                      created=$(echo "$m" | cut -d= -f3 | sed 's/T/ /; s/Z//')
-                      age=$(( $(date -u +%s) - $(date -u -d "$created" +%s) ))
-                      case "$phase" in Pending|Scheduling)
+                    case "$conds" in *RestartRequired=True*) reason="change needs a restart" ;; esac
+                    # hot-plug pending: KubeVirt retries the migration (failed attempts stay listed); if the first
+                    # attempt is 5+ minutes old and none is in flight, the change cannot be applied live
+                    case "$conds" in *HotVCPUChange=True*|*HotMemoryChange=True*)
+                      migs=$(kubectl -n vm-demo get vmim -o jsonpath="{range .items[?(@.spec.vmiName==\"$name\")]}{.metadata.creationTimestamp} {.status.phase} {.metadata.name}{\"\n\"}{end}" | sort)
+                      first=$(echo "$migs" | head -1 | cut -d' ' -f1 | sed 's/T/ /; s/Z//')
+                      if [ -n "$first" ] && ! echo "$migs" | grep -q -E ' (Running|PreparingTarget|TargetReady|Scheduled) '; then
+                        age=$(( now - $(date -u -d "$first" +%s) ))
                         if [ "$age" -ge 300 ]; then
-                          kubectl -n vm-demo delete vmim "${m%%=*}"
-                          reason="hot-plug migration stuck in $phase for ${age}s (no target node)"
-                        fi ;;
-                      esac
-                    done
+                          reason="hot-plug could not be applied live for ${age}s (no migration target node)"
+                          echo "$migs" | cut -d' ' -f3 | xargs -r kubectl -n vm-demo delete vmim
+                        fi
+                      fi ;;
+                    esac
                     if [ -n "$reason" ]; then
                       echo "restarting $name: $reason"
                       echo '{}' | kubectl replace --raw "/apis/subresources.kubevirt.io/v1/namespaces/vm-demo/virtualmachines/$name/restart" -f -
