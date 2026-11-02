@@ -13,7 +13,7 @@ on:
       cpu:
         description: vCPUs
         type: choice
-        options: ["1", "2", "4", "8", "16"]
+        options: ["1", "2", "4", "8"]
         default: "2"
       memory:
         description: Memory

@@ -25,6 +25,7 @@ for f in vms/*.yaml; do
   name=$(yq '.metadata.name' "$f")
   ns=$(yq '.metadata.namespace' "$f")
   sockets=$(yq '.spec.template.spec.domain.cpu.sockets' "$f")
+  max_sockets=$(yq '.spec.template.spec.domain.cpu.maxSockets // 0' "$f")
   cores=$(yq '.spec.template.spec.domain.cpu.cores' "$f")
   guest=$(yq '.spec.template.spec.domain.memory.guest' "$f")
   hotplug=$(yq '.metadata.annotations."harvesterhci.io/enableCPUAndMemoryHotplug"' "$f")
@@ -39,6 +40,9 @@ for f in vms/*.yaml; do
   # Hot-plug shape: vCPUs are sockets (1 core each), memory is memory.guest, no explicit limits
   [ "$hotplug" = "true" ] || fail "$f" "annotation harvesterhci.io/enableCPUAndMemoryHotplug must be \"true\""
   [ "$cores" = "1" ] || fail "$f" "cpu.cores must be 1 (vCPUs are hot-plugged as sockets)"
+  # maxSockets is the hot-plug ceiling; it must be set in Git (Harvester otherwise pins it to the boot size)
+  (( max_sockets >= cpu_max )) || fail "$f" "cpu.maxSockets must be set to at least ${cpu_max}"
+  (( sockets <= max_sockets )) || fail "$f" "cpu.sockets ($sockets) exceeds cpu.maxSockets ($max_sockets)"
   yq -e '.spec.template.spec.domain.resources.limits' "$f" >/dev/null 2>&1 && fail "$f" "remove resources.limits (blocks live memory hot-plug)"
 
   # CPU/memory must be within policy

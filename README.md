@@ -60,7 +60,7 @@ suma/                SUSE Multi-Linux Manager activation/bootstrap notes + Salt 
 
 ## Notes
 
-- Hot-plug shape: annotation `harvesterhci.io/enableCPUAndMemoryHotplug: "true"`, vCPUs as `cpu.sockets` (1 core each), memory as `memory.guest`, and **no** `resources.limits` (limits block live memory changes). Requires KubeVirt `vmRolloutStrategy: LiveUpdate` (Harvester's default). The ceiling is the `max-hotplug-ratio` setting (default 4x the size the VM booted with). `scripts/validate.sh` enforces this shape.
+- Hot-plug shape: annotation `harvesterhci.io/enableCPUAndMemoryHotplug: "true"`, vCPUs as `cpu.sockets` (1 core each) with an explicit `cpu.maxSockets` (the CPU hot-plug ceiling; without it Harvester pins it to the boot size and KubeVirt rejects later increases), memory as `memory.guest`, and **no** `resources.limits` (limits block live memory changes). Requires KubeVirt `vmRolloutStrategy: LiveUpdate` (Harvester's default). The ceiling is the `max-hotplug-ratio` setting (default 4x the size the VM booted with). `scripts/validate.sh` enforces this shape.
 - Switching an existing VM to the hot-plug shape is itself a restart-required change (CPU topology); auto-restart handles it once.
 - Scheduled runs on GitHub can start several minutes late, and scheduled workflows in public repos pause after 60 days without commits.
 - Fleet ignores fields that Harvester mutates after apply (`vms/fleet.yaml` `comparePatches`), so the bundle stays green.

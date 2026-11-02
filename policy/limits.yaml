@@ -6,7 +6,7 @@ requiredLabels:
   - demo.example.com/cost-center
 cpu:
   min: 1
-  max: 16
+  max: 8
 memoryGi:
   min: 1
   max: 64

@@ -26,6 +26,7 @@ spec:
           cores: 1
           sockets: 2
           threads: 1
+          maxSockets: 8
         memory:
           guest: 5Gi
         devices:
