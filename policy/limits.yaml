@@ -1,0 +1,12 @@
+# Guardrails enforced on every pull request by scripts/validate.sh
+allowedNamespaces:
+  - vm-demo
+requiredLabels:
+  - demo.example.com/owner
+  - demo.example.com/cost-center
+cpu:
+  min: 1
+  max: 16
+memoryGi:
+  min: 1
+  max: 64

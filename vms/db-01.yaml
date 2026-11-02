@@ -1,0 +1,56 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: db-01
+  namespace: vm-demo
+  labels:
+    demo.example.com/tier: db
+    demo.example.com/owner: team-dba
+    demo.example.com/cost-center: "cc-1001"
+  annotations:
+    # Harvester creates the root disk from a VM image (here: openSUSE Leap 16.0; adjust image + storage class to your cluster)
+    harvesterhci.io/volumeClaimTemplates: '[{"metadata":{"name":"db-01-rootdisk","annotations":{"harvesterhci.io/imageId":"default/image-s4khv"}},"spec":{"accessModes":["ReadWriteMany"],"resources":{"requests":{"storage":"10Gi"}},"volumeMode":"Block","storageClassName":"longhorn-v2"}}]'
+spec:
+  runStrategy: RerunOnFailure
+  template:
+    metadata:
+      labels:
+        harvesterhci.io/vmName: db-01
+    spec:
+      domain:
+        cpu:
+          cores: 2
+          sockets: 1
+          threads: 1
+        memory:
+          guest: 4Gi
+        resources:
+          limits:
+            cpu: "2"
+            memory: 4Gi
+        devices:
+          disks:
+            - name: rootdisk
+              bootOrder: 1
+              disk:
+                bus: virtio
+            - name: cloudinit
+              disk:
+                bus: virtio
+          interfaces:
+            - name: default
+              masquerade: {}
+              model: virtio
+      networks:
+        # pod network keeps the demo self-contained; use multus + a VM network (e.g. default/vlan1) in production
+        - name: default
+          pod: {}
+      volumes:
+        - name: rootdisk
+          persistentVolumeClaim:
+            claimName: db-01-rootdisk
+        - name: cloudinit
+          cloudInitNoCloud:
+            # registers the guest with SUSE Multi-Linux Manager on first boot (see suma/)
+            secretRef:
+              name: suma-bootstrap

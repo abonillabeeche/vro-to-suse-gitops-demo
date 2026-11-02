@@ -1,0 +1,38 @@
+# Runs on every PR that touches VMs or policy: schema check, guardrails, and a before/after plan comment.
+# Make the "validate" check required in the main branch ruleset so a failing PR cannot be merged.
+name: Validate VM changes
+
+on:
+  pull_request:
+    paths: ["vms/**", "policy/**"]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Schema check (kubeconform + KubeVirt CRD schema)
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz kubeconform
+          # fleet.yaml is Fleet config, not a Kubernetes resource
+          ls vms/*.yaml | grep -v '/fleet.yaml$' | xargs ./kubeconform -summary -ignore-missing-schemas \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+
+      - name: Policy guardrails
+        run: scripts/validate.sh
+
+      - name: Post change plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          scripts/change-summary.sh "origin/${{ github.base_ref }}" HEAD > plan.md
+          cat plan.md >> "$GITHUB_STEP_SUMMARY"
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file plan.md

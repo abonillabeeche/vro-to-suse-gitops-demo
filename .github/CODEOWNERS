@@ -1,0 +1,7 @@
+# Approval routing: a PR touching these paths needs a review from the listed owner.
+# Enforced by the main branch ruleset ("Require review from Code Owners").
+# The last matching line wins. In a real org each line points at a different team, for example
+# @your-org/vm-approvers, @your-org/dba-approvers and @your-org/platform-admins.
+*                   @abonillabeeche
+/vms/db-*.yaml      @abonillabeeche
+/policy/            @abonillabeeche

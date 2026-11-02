@@ -1,0 +1,65 @@
+# Self-service "catalog request": fill in the form (Actions tab > Request VM change > Run workflow)
+# and it opens a pull request. Approval = PR review (CODEOWNERS); deployment = Fleet after merge.
+name: Request VM change
+
+on:
+  workflow_dispatch:
+    inputs:
+      vm:
+        description: VM to change
+        type: choice
+        options: [web-01, app-01, db-01]
+      cpu:
+        description: vCPU cores
+        type: choice
+        options: ["1", "2", "4", "8", "16"]
+        default: "2"
+      memory:
+        description: Memory
+        type: choice
+        options: [2Gi, 4Gi, 8Gi, 16Gi, 32Gi, 64Gi]
+        default: 4Gi
+      reason:
+        description: Business justification / ticket number
+        type: string
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  open-pr:
+    runs-on: ubuntu-latest
+    env:
+      VM: ${{ inputs.vm }}
+      CPU: ${{ inputs.cpu }}
+      MEMORY: ${{ inputs.memory }}
+      REASON: ${{ inputs.reason }}
+      REQUESTER: ${{ github.actor }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update VM spec
+        run: |
+          yq -i '
+            .spec.template.spec.domain.cpu.cores = (strenv(CPU) | tonumber) |
+            .spec.template.spec.domain.resources.limits.cpu = strenv(CPU) |
+            .spec.template.spec.domain.memory.guest = strenv(MEMORY) |
+            .spec.template.spec.domain.resources.limits.memory = strenv(MEMORY)
+          ' "vms/${VM}.yaml"
+          git diff --exit-code --quiet && { echo "::error::No change: ${VM} is already ${CPU} vCPU / ${MEMORY}"; exit 1; }
+          scripts/validate.sh
+
+      - name: Open pull request
+        run: |
+          branch="vm-change/${VM}-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git commit -am "${VM}: resize to ${CPU} vCPU / ${MEMORY}"
+          git push origin "$branch"
+          gh pr create --base main --head "$branch" \
+            --title "${VM}: resize to ${CPU} vCPU / ${MEMORY}" \
+            --body "$(printf 'Requested by: %s\n\nReason: %s\n\nMerging this PR applies the change via Fleet.' "$REQUESTER" "$REASON")"

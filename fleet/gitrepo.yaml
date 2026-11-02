@@ -1,0 +1,16 @@
+# Apply once in Rancher (Continuous Delivery): Fleet watches main and applies vms/ to the Harvester cluster.
+apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: vm-demo
+  namespace: fleet-default
+spec:
+  repo: https://github.com/your-org/vro-to-suse-gitops-demo
+  branch: main
+  paths:
+    - vms
+  # clientSecretName: github-deploy-key   # needed if the repo is private
+  targets:
+    - clusterSelector:
+        matchLabels:
+          demo.example.com/vm-gitops: "true"

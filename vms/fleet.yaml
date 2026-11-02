@@ -1,0 +1,12 @@
+# Fleet bundle for everything under vms/ (applied to the Harvester cluster by fleet/gitrepo.yaml)
+defaultNamespace: vm-demo
+diff:
+  # Harvester/KubeVirt mutate these fields after apply; ignore them so Fleet doesn't report drift
+  comparePatches:
+    - apiVersion: kubevirt.io/v1
+      kind: VirtualMachine
+      jsonPointers:
+        - /metadata/annotations
+        - /spec/template/metadata/annotations
+        - /spec/template/spec/domain/resources/requests
+        - /spec/runStrategy
