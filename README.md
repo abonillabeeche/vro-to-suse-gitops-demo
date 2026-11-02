@@ -60,3 +60,4 @@ suma/                SUSE Multi-Linux Manager activation/bootstrap notes + Salt 
 
 - CPU/memory changes take effect after a VM restart, unless the VM has CPU/memory hot-plug configured in Harvester.
 - Fleet ignores fields that Harvester mutates after apply (`vms/fleet.yaml` `comparePatches`), so the bundle stays green.
+- In a public repo, GitHub holds the validate run on the first PR opened by `github-actions[bot]` until a maintainer clicks *Approve and run* (first-time contributor rule). After that PR is merged, later requests run automatically. To avoid it entirely, open the PR with a GitHub App token instead of `GITHUB_TOKEN`.
