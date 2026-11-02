@@ -1,0 +1,58 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: wp-01
+  namespace: vm-demo
+  labels:
+    demo.example.com/tier: wordpress
+    demo.example.com/owner: team-apps
+    demo.example.com/cost-center: "cc-1001"
+    # opt in: vms/auto-restart.yaml restarts this VM when a change cannot be applied live
+    demo.example.com/auto-restart: "true"
+  annotations:
+    # CPU (sockets) and memory increases are hot-plugged into the running VM, no reboot (up to 4x the boot size)
+    harvesterhci.io/enableCPUAndMemoryHotplug: "true"
+    # Harvester creates the root disk from a VM image (here: openSUSE Leap 16.1; adjust image + storage class to your cluster)
+    harvesterhci.io/volumeClaimTemplates: '[{"metadata":{"name":"wp-01-rootdisk","annotations":{"harvesterhci.io/imageId":"default/leap-16-1-minimal-vm"}},"spec":{"accessModes":["ReadWriteMany"],"resources":{"requests":{"storage":"10Gi"}},"volumeMode":"Block","storageClassName":"longhorn-v2"}}]'
+spec:
+  runStrategy: RerunOnFailure
+  template:
+    metadata:
+      labels:
+        harvesterhci.io/vmName: wp-01
+    spec:
+      domain:
+        cpu:
+          cores: 1
+          sockets: 2
+          threads: 1
+          maxSockets: 8
+        memory:
+          guest: 4Gi
+        devices:
+          disks:
+            - name: rootdisk
+              bootOrder: 1
+              disk:
+                bus: virtio
+            - name: cloudinit
+              disk:
+                bus: virtio
+          interfaces:
+            - name: default
+              masquerade: {}
+              model: virtio
+              macAddress: 02:57:50:00:00:01
+      networks:
+        # pod network keeps the demo self-contained; use multus + a VM network (e.g. default/vlan1) in production
+        - name: default
+          pod: {}
+      volumes:
+        - name: rootdisk
+          persistentVolumeClaim:
+            claimName: wp-01-rootdisk
+        - name: cloudinit
+          cloudInitNoCloud:
+            # registers with SUSE Multi-Linux Manager (activation key 1-wordpress), which applies the wordpress Salt state
+            secretRef:
+              name: wordpress-cloudinit

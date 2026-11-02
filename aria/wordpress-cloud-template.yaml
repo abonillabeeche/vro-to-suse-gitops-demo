@@ -1,0 +1,25 @@
+# For comparison only: how the same WordPress state is applied in VMware Aria Automation.
+# Uses the documented Cloud.SaltStack resource (Aria Automation 8.17 "Add the SaltStack Config resource to the
+# cloud template"); the older saltConfiguration machine property is deprecated.
+# The state files are the same ones in ../salt/wordpress, published to the Aria Automation Config file server.
+formatVersion: 1
+inputs:
+  siteTitle:
+    type: string
+    default: Deployed by Aria
+resources:
+  Cloud_vSphere_Machine_1:
+    type: Cloud.vSphere.Machine
+    properties:
+      image: sles-16
+      cpuCount: 2
+      totalMemoryMB: 4096
+  Cloud_SaltStack_1:
+    type: Cloud.SaltStack
+    properties:
+      masterId: saltstack_enterprise_installer
+      hosts:
+        - ${resource.Cloud_vSphere_Machine_1.id}
+      saltEnvironment: base
+      stateFiles:
+        - /wordpress/init.sls
