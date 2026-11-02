@@ -5,7 +5,7 @@ metadata:
   name: vm-demo
   namespace: fleet-default
 spec:
-  repo: https://github.com/your-org/vro-to-suse-gitops-demo
+  repo: https://github.com/abonillabeeche/vro-to-suse-gitops-demo
   branch: main
   paths:
     - vms
