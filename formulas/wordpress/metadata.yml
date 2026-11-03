@@ -1,0 +1,4 @@
+description: WordPress on Apache + PHP + MariaDB with a Valkey object cache (same Salt state as the Aria blueprint)
+group: Applications
+after:
+  - users

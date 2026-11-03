@@ -1,0 +1,14 @@
+# SUSE Multi-Linux Manager form for the wordpress formula (state: salt/wordpress, unchanged).
+# The values become pillar data under "wordpress:", which salt/wordpress/map.jinja already reads.
+wordpress:
+  $type: group
+  $name: WordPress site
+  site_title:
+    $name: Site title
+    $default: Managed by SUSE Multi-Linux Manager
+  tagline:
+    $name: Tagline
+    $default: Day-2 change rolled out with Salt
+  admin_email:
+    $name: Administrator e-mail
+    $default: admin@example.com

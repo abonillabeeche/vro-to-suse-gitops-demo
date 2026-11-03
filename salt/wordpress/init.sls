@@ -132,6 +132,26 @@ wordpress-web-service:
     - require:
       - file: wordpress-ownership
 
+{% if os_map.get('cache_service') %}
+# Object cache for WordPress (Valkey, the Redis-compatible store in SLES 16), local only.
+wordpress-cache-config:
+  file.copy:
+    - name: {{ os_map.cache_conf }}
+    - source: {{ os_map.cache_conf }}.example
+    - user: root
+    - group: {{ os_map.cache_group }}
+    - mode: '0640'
+    - require:
+      - pkg: wordpress-packages
+
+wordpress-cache-service:
+  service.running:
+    - name: {{ os_map.cache_service }}
+    - enable: True
+    - watch:
+      - file: wordpress-cache-config
+{% endif %}
+
 {% if salt['cmd.which']('firewall-cmd') %}
 wordpress-firewall:
   firewalld.present:
