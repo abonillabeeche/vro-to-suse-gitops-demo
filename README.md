@@ -91,3 +91,15 @@ target differs change. The same highstate also reverts manual edits on the VM (d
 keeps the fleet converged.
 
 Test the states without a server: `salt-call --local --file-root=salt state.apply wordpress test=True`.
+
+## Part 3: day-2 automation people use Aria for, in SUSE Multi-Linux Manager
+
+- **Catalog form -> formula with forms**: `formulas/wordpress/form.yml` turns the unchanged `salt/wordpress` state into a
+  formula with a web form (site title, tagline). Install it with `suma/install-formula.sh root@<server-host>`; the
+  `wordpress` system group carries the formula and its form data, and activation key `1-wordpress` adds new VMs to it.
+- **Scheduled job -> recurring action**: hourly highstate on the `wordpress` group.
+- **Approved content per stage -> Content Lifecycle Management**: project `wordpress`, SLES 16.1 sources, `dev` -> `prod`.
+- **Orchestration workflow -> action chain**: `wordpress-maintenance` upgrades outdated packages, applies the highstate
+  and runs `suma/smoke-test.sh`.
+
+`suma/part3.py` holds the API calls (`group`, `recurring`, `clm`, `promote`, `use-prod`, `chain`, `status`).
