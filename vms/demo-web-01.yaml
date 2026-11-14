@@ -1,34 +1,33 @@
+# Demo VM for the "Resize VMs through GitOps" video (disaster-recovery cluster, 3 nodes, so hot-plug finishes live).
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
-  name: web-01
-  namespace: vm-demo
+  name: demo-web-01
+  namespace: demo
   labels:
     demo.example.com/tier: web
     demo.example.com/owner: team-web
     demo.example.com/cost-center: "cc-1001"
-    # opt in: vms/auto-restart.yaml restarts this VM when a change cannot be applied live
-    demo.example.com/auto-restart: "true"
   annotations:
     # CPU (sockets) and memory increases are hot-plugged into the running VM, no reboot (up to 4x the boot size)
     harvesterhci.io/enableCPUAndMemoryHotplug: "true"
-    # Harvester creates the root disk from a VM image (here: openSUSE Leap 16.0; adjust image + storage class to your cluster)
-    harvesterhci.io/volumeClaimTemplates: '[{"metadata":{"name":"web-01-rootdisk","annotations":{"harvesterhci.io/imageId":"default/image-s4khv"}},"spec":{"accessModes":["ReadWriteMany"],"resources":{"requests":{"storage":"10Gi"}},"volumeMode":"Block","storageClassName":"longhorn-v2"}}]'
+    harvesterhci.io/volumeClaimTemplates: '[{"metadata":{"name":"demo-web-01-rootdisk","annotations":{"harvesterhci.io/imageId":"default/image-d8ngv"}},"spec":{"accessModes":["ReadWriteMany"],"resources":{"requests":{"storage":"5Gi"}},"volumeMode":"Block","storageClassName":"lh-51c27bca-935d-40a7-842e-a2f59561bc80"}}]'
 spec:
   runStrategy: RerunOnFailure
   template:
     metadata:
       labels:
-        harvesterhci.io/vmName: web-01
+        harvesterhci.io/vmName: demo-web-01
     spec:
+      evictionStrategy: LiveMigrateIfPossible
       domain:
         cpu:
           cores: 1
-          sockets: 2
+          sockets: 1
           threads: 1
           maxSockets: 8
         memory:
-          guest: 4Gi
+          guest: 2Gi
         devices:
           disks:
             - name: rootdisk
@@ -42,17 +41,18 @@ spec:
             - name: default
               masquerade: {}
               model: virtio
-              macAddress: ba:55:fb:7a:f4:41
+              macAddress: 02:de:73:00:00:01
       networks:
-        # pod network keeps the demo self-contained; use multus + a VM network (e.g. default/vlan1) in production
         - name: default
           pod: {}
       volumes:
         - name: rootdisk
           persistentVolumeClaim:
-            claimName: web-01-rootdisk
+            claimName: demo-web-01-rootdisk
         - name: cloudinit
           cloudInitNoCloud:
-            # registers the guest with SUSE Multi-Linux Manager on first boot (see suma/)
-            secretRef:
-              name: suma-bootstrap
+            userData: |
+              #cloud-config
+              packages: [qemu-guest-agent]
+              runcmd:
+                - systemctl enable --now qemu-guest-agent

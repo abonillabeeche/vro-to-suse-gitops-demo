@@ -1,6 +1,7 @@
 # Guardrails enforced on every pull request by scripts/validate.sh
 allowedNamespaces:
   - vm-demo
+  - demo
 requiredLabels:
   - demo.example.com/owner
   - demo.example.com/cost-center

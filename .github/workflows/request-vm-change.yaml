@@ -9,7 +9,7 @@ on:
       vm:
         description: VM to change
         type: choice
-        options: [web-01, app-01, db-01, wp-01]
+        options: [demo-web-01]
       cpu:
         description: vCPUs
         type: choice
@@ -77,6 +77,6 @@ jobs:
             next="Merging this PR applies the change via Fleet."
             label=()
           fi
-          gh pr create --base main --head "$branch" "${label[@]}" \
+          gh pr create --base "$GITHUB_REF_NAME" --head "$branch" "${label[@]}" \
             --title "${VM}: resize to ${CPU} vCPU / ${MEMORY}" \
             --body "$(printf 'Requested by: %s\n\nReason: %s\n\n%s\n\n%s' "$REQUESTER" "$REASON" "$when" "$next")"

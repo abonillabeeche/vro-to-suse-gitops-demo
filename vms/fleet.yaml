@@ -1,5 +1,5 @@
 # Fleet bundle for everything under vms/ (applied to the Harvester cluster by fleet/gitrepo.yaml)
-defaultNamespace: vm-demo
+defaultNamespace: demo
 diff:
   # Harvester/KubeVirt mutate these fields after apply; ignore them so Fleet doesn't report drift
   comparePatches:
